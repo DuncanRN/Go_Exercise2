@@ -1,3 +1,11 @@
+// Some notes about this exercise:
+// I started with no knowledge of Go (of C for that matter) before starting this exercise.
+// but because the brief states "(C or GO prefered)" I thought I should accept the challenge!
+// I'm fairly happy with it all, except the final part, it will only work for an array of length 3 - a big 
+// assumption!
+// Otherwise it was enjoyable getting started on a new language.
+
+
 package main
 
 import (
@@ -10,6 +18,7 @@ import (
         "encoding/base64"
         // "reflect"
         "strings"
+        "io/ioutil"
         )
 
 var  currentTime = time.Now().Unix()
@@ -20,21 +29,10 @@ type Device struct {
     Name   string `json:"Name"`
     Type   string `json:"Type"`
     Info   string `json:"Info"`
-    Value  string  `json:"value"` // !!! Duncan is there a better way to do this?
-                                    // just treat it as a string then DecodeString later?
-    Timestamp string `json:"timestamp"`  // again, should Timestamp be an int ? 
-    // or even better should we be creating a new struct called UnixTime ?
+    Value  string  `json:"value"` 
+    Timestamp string `json:"timestamp"` 
 }
 
-
-// Currently not being used - DELETE !!!! ???
-type DeviceUnMarshalled struct {
-    Name   string 
-    Type   string 
-    Info   string 
-    Value  string 
-    Timestamp string 
-}
 
 // Here we setup a Devices struct containing
 // an array of Devices
@@ -46,8 +44,6 @@ func removeDevice(s []Device, i int) []Device {
     s[i] = s[len(s)-1]
     return s[:len(s)-1]
 }
-
-
 
 func main() {
 
@@ -63,7 +59,6 @@ func main() {
     // defer closing the file so that it can be parsed later
     defer dataJsonFile.Close()
 
-
     // now we can unmarshall our dataJsonFile
     // read our opened jsonFile as a byte array.
     byteValue, _ := io.ReadAll(dataJsonFile)
@@ -75,13 +70,6 @@ func main() {
     // now unmarshal the byte Array - byteValue which contains the data from the file.
     // it is put in 'devices' which we just defined
     json.Unmarshal(byteValue, &devices)
-
-    // now loop around the devices array, and for each device
-    // print out the device's Name, Type, Info, Value and Timestamp
-    
-    // for i := 0; i < len(devices.Devices); i++ {
-    //     fmt.Println("Device Name: " + devices.Devices[i].Name)
-    // }
 
 
     // ====
@@ -97,7 +85,6 @@ func main() {
 
         if (deviceTimestampInt64 < currentTime){
 
-            // fmt.Println("YES! Device timestamp is earlier than current time. We should discard ")
             devices.Devices = removeDevice(devices.Devices, i)
             i = i -1 
 
@@ -126,32 +113,19 @@ func main() {
         }
     }
 
-    fmt.Println("now we output the items, with the earlier timestamped ones removed...")
-    fmt.Println("_______")
 
-    for i := 0; i < len(devices.Devices); i++ {
-        fmt.Println("Device Name: " + devices.Devices[i].Name)
-    }
-    fmt.Println("_______")
-
-
-
-
-
-    
+    // ====
     // TASK3:  Get the total of all value entries, values are base64 encoded integers
+    // ====
 
-    fmt.Println("Task 3")
     var total = 0
     for i := 0; i < len(devices.Devices); i++ {
-        // fmt.Println("Device Name: " + devices.Devices[i].Name)
 
         decodedValue, err := base64.StdEncoding.DecodeString(devices.Devices[i].Value)
         if err != nil {
             fmt.Println("Error Found:", err)
             return
         }
-        fmt.Println("Device Value: " + devices.Devices[i].Value + " Decoded value: " + string(decodedValue))
 
         decodedValueToInt, err := strconv.Atoi(string(decodedValue))
 
@@ -163,12 +137,10 @@ func main() {
         total = total + decodedValueToInt
     }
 
-    fmt.Println("total - ", total)
 
     // ====
     // TASK4:  Parse the uuid from the info field of each entry
     // ====
-    fmt.Println("Task 4")
 
     // create array of strings uuids
     var uuids []string
@@ -177,13 +149,11 @@ func main() {
     for i := 0; i < len(devices.Devices); i++ {
         
         var Info = devices.Devices[i].Info
-        fmt.Println("We want uuid from Device Info: " + Info)
+
         // get the position of the substring "uuid" withing the Info string
         // an example of this larger Info string is 
         // "A Bacnet device uuid:29446300-e583-11ec-8fea-0242ac120002, used to read the light-level"
         posOfUuid := strings.Index(string(Info), "uuid") 
-
-        fmt.Println("uuid occurs at: " , posOfUuid)
 
         // now find next comma
         // Here we are making some assumptions, that the string will alwayszs be formated 
@@ -191,8 +161,6 @@ func main() {
         // An improvement might be to check for the first whitespace or comma after the uuid
         
         posOfComma := strings.Index(string(Info), ",") 
-
-        fmt.Println("comma occurs at: " , posOfComma)
 
         substring := Info[(posOfUuid+5):posOfComma]
 
@@ -206,63 +174,26 @@ func main() {
 
     fmt.Println(uuids)
 
-    /*
-    var formattedUuids = "";
 
-    for i := 0; i < len(uuids); i++ {
-        formattedUuids +=  uuids[i] + ", ";
-    }
-
-    // this clears off the final ", "
-    formattedUuids = formattedUuids[0:(len(formattedUuids)-2)]
-    fmt.Println("formattedUuids ", formattedUuids)
-    */
-
+    // ====
     // TASK5:  Output the values total and the list of uuids in the format described 
     // by the JSON schema. Write this data to a file
-
-    val := []interface{}{}
-	// val = append(val, 3)
-	// val = append(val, "123123")
-	// val = append(val, struct {
-	// 	Status            string
-	// 	CurrentTime       time.Time
-	// 	HeartbeatInterval int
-	// }{
-	// 	"Accepted",
-	// 	time.Now(),
-	// 	300,
-	// })
-    val = append(val, struct {
-		Total            int
-		CurrentTime       time.Time
-		HeartbeatInterval int
-	}{
-		total,
-		time.Now(),
-		300,
-	})
-
-	js, _ := json.Marshal(val)
-	fmt.Printf("%#v", string(js))
-    fmt.Println("")
-    fmt.Println("")
+    // ====
 
     type myJSON struct {
-        Array []string
+        Total int
+        Uuids []string
     }
 
+    
     // Currently this solution only works for an array of uuids with 3 elements.
-
-    jsondat := &myJSON{Array: []string{string(uuids[0]), string(uuids[1]), string(uuids[2])}}
-    encjson, _ := json.Marshal(jsondat)
-    fmt.Println(string(encjson))
+    jsondat := &myJSON{Total: total, Uuids: []string{string(uuids[0]), string(uuids[1]), string(uuids[2])}}
+    file, _ := json.Marshal(jsondat)
+    fmt.Println(string(file))
 
     // write this data to a file
 
-    
+	_ = ioutil.WriteFile("result.json", file, 0644)
 
-    // AS a final thing do we close our JSON file? We Defered that earlier...
-    // !!!!!
 
 }
